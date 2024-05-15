@@ -2,12 +2,16 @@ const std = @import("std");
 const stdout = std.io.getStdOut().writer();
 const stderr = std.io.getStdErr().writer();
 const Allocator = std.mem.Allocator;
+const plmzky = @import("plmzky");
 
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
     const ally = arena.allocator();
+
+    var keywords = try plmzky.token.KeyWords.init(ally);
+    defer keywords.deinit();
 
     const user = std.process.getEnvVarOwned(ally, "USER") catch |e| {
         try stderr.print("Error getting user name: err = {}\n", .{e});
