@@ -22,6 +22,10 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(exe);
 
+    const plmzky = b.addModule("plmzky", .{ .root_source_file = .{ .path = "src/root.zig" } });
+
+    exe.root_module.addImport("plmzky", plmzky);
+
     const run_cmd = b.addRunArtifact(exe);
 
     run_cmd.step.dependOn(b.getInstallStep());
