@@ -10,9 +10,6 @@ pub fn main() !void {
 
     const ally = arena.allocator();
 
-    var keywords = try plmzky.token.KeyWords.init(ally);
-    defer keywords.deinit();
-
     const user = std.process.getEnvVarOwned(ally, "USER") catch |e| {
         try stderr.print("Error getting user name: err = {}\n", .{e});
         return;
