@@ -1,71 +1,27 @@
 const std = @import("std");
-const StringHashMap = std.StringHashMap;
-const Allocator = std.mem.Allocator;
 
-pub const TokenKind = enum {
-    ILLEGAL,
-    EOF,
+pub const TokenType = []const u8;
 
-    // Identifiers + literals
-    IDENT,
-    INT,
+pub const Token = struct {
+    ttype: TokenType,
+    literal: TokenType,
 
-    // Operators
-    ASSIGN,
-    PLUS,
-    MINUS,
-    BANG,
-    ASTERISK,
-    SLASH,
-
-    LT,
-    GT,
-
-    EQ,
-    NEQ,
-
-    // Delimiters
-    COMMA,
-    SEMICOLON,
-
-    LPAREN,
-    RPAREN,
-    LBRACE,
-    RBRACE,
-
-    // Keywords
-    FUNCTION,
-    LET,
-    TRUE,
-    FALSE,
-    IF,
-    ELSE,
-    RETURN,
-};
-
-pub const KeyWords = struct {
-    const Self = @This();
-
-    map: StringHashMap(TokenKind),
-
-    pub fn init(allocator: Allocator) !Self {
-        var map = StringHashMap(TokenKind).init(allocator);
-        try map.put("let", TokenKind.LET);
-        try map.put("fn", TokenKind.FUNCTION);
-        try map.put("true", TokenKind.TRUE);
-        try map.put("false", TokenKind.FALSE);
-        try map.put("if", TokenKind.IF);
-        try map.put("else", TokenKind.ELSE);
-        try map.put("return", TokenKind.RETURN);
-
-        return KeyWords{ .map = map };
-    }
-
-    pub fn loopupIdent(self: *Self, ident: []u8) TokenKind {
-        return if (self.map.get(ident)) |token| return token else TokenKind.IDENT;
-    }
-
-    pub fn deinit(self: *Self) void {
-        self.map.deinit();
+    pub fn new(token_type: TokenType, ch: u8) Token {
+        return Token{ .ttype = token_type, .literal = &[_]u8{ch} };
     }
 };
+
+pub const ILLEGAL = "ILLEGAL";
+pub const EOF = "EOF";
+pub const IDENT = "IDENT";
+pub const INT = "INT";
+pub const ASSIGN = "=";
+pub const PLUS = "+";
+pub const COMMA = ".";
+pub const SEMICOLON = ";";
+pub const LPAREN = "(";
+pub const RPAREN = ")";
+pub const LBRACE = "{";
+pub const RBRACE = "}";
+pub const FUNCTION = "FUNCTION";
+pub const LET = "LET";
