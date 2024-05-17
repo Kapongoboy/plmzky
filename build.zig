@@ -22,7 +22,17 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(exe);
 
-    const plmzky = b.addModule("plmzky", .{ .root_source_file = .{ .path = "src/root.zig" } });
+    const plmzky = b.addModule(
+        "plmzky",
+        .{
+            .root_source_file = .{
+                .src_path = .{
+                    .owner = b,
+                    .sub_path = "src/root.zig",
+                },
+            },
+        },
+    );
 
     exe.root_module.addImport("plmzky", plmzky);
 
