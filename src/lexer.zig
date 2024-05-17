@@ -115,7 +115,11 @@ test "text next token" {
     for (expected) |tt| {
         const tok = l.nextToken();
         try testing.expectEqual(tt.expected_type, tok.ttype);
-        // try testing.expect(std.mem.eql(u8, tt.expected_literal, tok.literal));
+
+        const result = std.mem.eql(u8, tt.expected_literal, tok.literal);
+
+        std.debug.print("\nthe result was {}\nexpected {s}, actual {s}\n", .{ result, tt.expected_literal, tok.literal });
+        try testing.expect(result);
     }
 }
 
@@ -179,6 +183,7 @@ test "text next token long form" {
     for (expected) |tt| {
         const tok = l.nextToken();
         try testing.expectEqual(tt.expected_type, tok.ttype);
-        // try testing.expect(std.mem.eql(u8, tt.expected_literal, tok.literal));
+        // const result = std.mem.eql(u8, tt.expected_literal, tok.literal);
+        // try testing.expect(result);
     }
 }
