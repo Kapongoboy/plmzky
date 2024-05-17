@@ -1,15 +1,18 @@
 const std = @import("std");
 const testing = std.testing;
 const token = @import("token.zig");
+const KeyWords = token.KeyWords;
 
 pub const Lexer = struct {
+    keywords: *KeyWords,
     input: []const u8,
     position: usize, // current position in input (points to current char)
     read_position: usize, // current reading position in input (after current char)
     ch: u8, // current char under examination
 
-    pub fn init(input: []const u8) Lexer {
+    pub fn init(input: []const u8, kw: *KeyWords) Lexer {
         var l = Lexer{
+            .keywords = kw,
             .input = input,
             .position = 0,
             .read_position = 0,
@@ -29,6 +32,32 @@ pub const Lexer = struct {
         l.read_position += 1;
     }
 
+    fn readIdentifier(l: *Lexer) []const u8 {
+        const position = l.position;
+
+        while (std.ascii.isAlphabetic(l.ch)) {
+            l.readChar();
+        }
+
+        return l.input[position..l.position];
+    }
+
+    fn skipWhiteSpace(l: *Lexer) void {
+        while (std.ascii.isWhitespace(l.ch)) {
+            l.readChar();
+        }
+    }
+
+    fn readNumber(l: *Lexer) []const u8 {
+        const position = l.position;
+
+        while (std.ascii.isDigit(l.ch)) {
+            l.readChar();
+        }
+
+        return l.input[position..l.position];
+    }
+
     pub fn nextToken(l: *Lexer) token.Token {
         var tok: token.Token = undefined;
 
@@ -42,7 +71,14 @@ pub const Lexer = struct {
             '{' => tok = token.Token.new(token.LBRACE, l.ch),
             '}' => tok = token.Token.new(token.RBRACE, l.ch),
             else => {
-                if (std.ascii.isAlphabetic(l.ch)) {}
+                if (std.ascii.isAlphabetic(l.ch)) {
+                    const literal = l.readIdentifier();
+                    return token.Token.initWithString(literal, l.keywords.lookUpIdent(literal));
+                } else if (std.ascii.isDigit(l.ch)) {
+                    return token.Token.initWithString(token.INT, l.readNumber());
+                } else {
+                    tok = token.Token.new(token.ILLEGAL, l.ch);
+                }
             },
         }
 
@@ -65,12 +101,16 @@ test "text next token" {
         .{ .expected_type = token.EOF, .expected_literal = "" },
     };
 
-    var l = Lexer.init(input);
+    var KW = try KeyWords.tryInit(testing.allocator);
+    defer KW.deinit();
+
+    var l = Lexer.init(input, &KW);
 
     for (expected) |tt| {
         const tok = l.nextToken();
-        try testing.expectEqual(tt.expected_type, tok.ttype);
-        try testing.expectEqual(tt.expected_literal, tok.literal);
+        std.debug.print("tok: {s}\ntt: {s}\n", .{ tok.ttype, tt.expected_type });
+        try testing.expect(std.mem.eql(u8, tt.expected_type, tok.ttype));
+        try testing.expect(std.mem.eql(u8, tt.expected_literal, tok.literal));
     }
 }
 
@@ -126,11 +166,14 @@ test "text next token long form" {
         .{ .expected_type = token.EOF, .expected_literal = "" },
     };
 
-    var l = Lexer.init(input);
+    var KW = try KeyWords.tryInit(testing.allocator);
+    defer KW.deinit();
+
+    var l = Lexer.init(input, &KW);
 
     for (expected) |tt| {
         const tok = l.nextToken();
-        try testing.expectEqual(tt.expected_type, tok.ttype);
-        try testing.expectEqual(tt.expected_literal, tok.literal);
+        try testing.expect(std.mem.eql(u8, tt.expected_type, tok.ttype));
+        try testing.expect(std.mem.eql(u8, tt.expected_literal, tok.literal));
     }
 }
