@@ -8,7 +8,7 @@ pub const Lexer = struct {
     read_position: usize, // current reading position in input (after current char)
     ch: u8, // current char under examination
 
-    pub fn new(input: []u8) Lexer {
+    pub fn init(input: []const u8) Lexer {
         var l = Lexer{
             .input = input,
             .position = 0,
@@ -41,7 +41,9 @@ pub const Lexer = struct {
             '+' => tok = token.Token.new(token.PLUS, l.ch),
             '{' => tok = token.Token.new(token.LBRACE, l.ch),
             '}' => tok = token.Token.new(token.RBRACE, l.ch),
-            _ => tok = token.Token.new(token.EOF, 0x00),
+            else => {
+                if (std.ascii.isAlphabetic(l.ch)) {}
+            },
         }
 
         l.readChar();
@@ -63,7 +65,68 @@ test "text next token" {
         .{ .expected_type = token.EOF, .expected_literal = "" },
     };
 
-    var l = Lexer.new(input);
+    var l = Lexer.init(input);
+
+    for (expected) |tt| {
+        const tok = l.nextToken();
+        try testing.expectEqual(tt.expected_type, tok.ttype);
+        try testing.expectEqual(tt.expected_literal, tok.literal);
+    }
+}
+
+test "text next token long form" {
+    const input =
+        \\let five = 5;
+        \\let ten = 10;
+        \\
+        \\let add = fn(x, y) {
+        \\    x + y;
+        \\};
+        \\
+        \\let result = add(five, ten);
+    ;
+
+    const expected = [_]struct { expected_type: token.TokenType, expected_literal: []const u8 }{
+        .{ .expected_type = token.LET, .expected_literal = "let" },
+        .{ .expected_type = token.IDENT, .expected_literal = "five" },
+        .{ .expected_type = token.ASSIGN, .expected_literal = "=" },
+        .{ .expected_type = token.INT, .expected_literal = "5" },
+        .{ .expected_type = token.SEMICOLON, .expected_literal = ";" },
+        .{ .expected_type = token.LET, .expected_literal = "let" },
+        .{ .expected_type = token.IDENT, .expected_literal = "ten" },
+        .{ .expected_type = token.ASSIGN, .expected_literal = "=" },
+        .{ .expected_type = token.INT, .expected_literal = "10" },
+        .{ .expected_type = token.SEMICOLON, .expected_literal = ";" },
+        .{ .expected_type = token.LET, .expected_literal = "let" },
+        .{ .expected_type = token.IDENT, .expected_literal = "add" },
+        .{ .expected_type = token.ASSIGN, .expected_literal = "=" },
+        .{ .expected_type = token.FUNCTION, .expected_literal = "fn" },
+        .{ .expected_type = token.LPAREN, .expected_literal = "(" },
+        .{ .expected_type = token.IDENT, .expected_literal = "x" },
+        .{ .expected_type = token.COMMA, .expected_literal = "," },
+        .{ .expected_type = token.IDENT, .expected_literal = "y" },
+        .{ .expected_type = token.RPAREN, .expected_literal = ")" },
+        .{ .expected_type = token.LBRACE, .expected_literal = "{" },
+        .{ .expected_type = token.IDENT, .expected_literal = "x" },
+        .{ .expected_type = token.PLUS, .expected_literal = "+" },
+        .{ .expected_type = token.IDENT, .expected_literal = "y" },
+        .{ .expected_type = token.SEMICOLON, .expected_literal = ";" },
+        .{ .expected_type = token.RBRACE, .expected_literal = "}" },
+        .{ .expected_type = token.SEMICOLON, .expected_literal = ";" },
+        .{ .expected_type = token.LET, .expected_literal = "let" },
+        .{ .expected_type = token.IDENT, .expected_literal = "result" },
+        .{ .expected_type = token.ASSIGN, .expected_literal = "=" },
+        .{ .expected_type = token.IDENT, .expected_literal = "add" },
+        .{ .expected_type = token.LPAREN, .expected_literal = "(" },
+        .{ .expected_type = token.IDENT, .expected_literal = "five" },
+        .{ .expected_type = token.COMMA, .expected_literal = "," },
+        .{ .expected_type = token.IDENT, .expected_literal = "ten" },
+        .{ .expected_type = token.RPAREN, .expected_literal = ")" },
+        .{ .expected_type = token.SEMICOLON, .expected_literal = ";" },
+        .{ .expected_type = token.EOF, .expected_literal = "" },
+    };
+
+    var l = Lexer.init(input);
 
     for (expected) |tt| {
         const tok = l.nextToken();
