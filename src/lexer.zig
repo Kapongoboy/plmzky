@@ -4,6 +4,47 @@ const token = @import("token.zig");
 const KeyWords = token.KeyWords;
 const TokenKind = token.TokenKind;
 const Token = token.Token;
+const Allocator = std.mem.Allocator;
+
+const StringManager = struct {
+    const Self = @This();
+
+    allocator: Allocator,
+    buf: []u8,
+    ptr: usize = 0,
+    size: usize = 4096,
+
+    pub fn init(a: Allocator) !StringManager {
+        return StringManager{
+            .allocator = a,
+            .buf = try a.alloc(u8, 4096),
+        };
+    }
+
+    pub fn make_string(self: *Self, letters: []const u8) !*const []u8 {
+        const end = self.ptr + letters.len;
+        defer self.ptr = end;
+
+        if (self.ptr >= 4096) {
+            const old_buf = self.buf;
+            defer self.allocator.free(old_buf);
+
+            const old_size = self.size;
+            self.size *= 2;
+            const new_buf = try self.allocator.alloc(u8, self.size);
+            std.mem.copyForwards(u8, new_buf[0..old_size], old_buf);
+            self.buf = new_buf;
+        }
+
+        std.mem.copyForwards(u8, self.buf[self.ptr..end], letters);
+
+        return &self.buf[self.ptr..end];
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.allocator.free(self.buf);
+    }
+};
 
 pub const Lexer = struct {
     keywords: *KeyWords,
@@ -14,9 +55,10 @@ pub const Lexer = struct {
     curr_line: usize,
     curr_col: usize,
     repl: bool,
+    sm: *StringManager,
     path: ?*[]const u8,
 
-    pub fn init(input: []const u8, repl: bool, path: ?*[]const u8, kw: *KeyWords) Lexer {
+    pub fn init(input: []const u8, repl: bool, path: ?*[]const u8, kw: *KeyWords, sm: *StringManager) Lexer {
         var l = Lexer{
             .keywords = kw,
             .input = input,
@@ -26,6 +68,7 @@ pub const Lexer = struct {
             .curr_line = 1,
             .curr_col = 1,
             .repl = repl,
+            .sm = sm,
             .path = path,
         };
         l.readChar();
@@ -58,7 +101,7 @@ pub const Lexer = struct {
         l.read_position += 1;
     }
 
-    fn readIdentifier(l: *Lexer) Token {
+    fn readIdentifier(l: *Lexer) !Token {
         const position = l.position;
 
         while (std.ascii.isAlphabetic(l.ch) or (l.ch == '_')) {
@@ -67,7 +110,7 @@ pub const Lexer = struct {
 
         const loc = if (l.repl) null else token.Location.init(l.curr_line, l.curr_col, l.path.?);
 
-        return Token.initWithStringAndLocation(l.keywords.lookUpIdent(l.input[position..l.position]), l.input[position..l.position], loc);
+        return Token.init(l.keywords.lookUpIdent(l.input[position..l.position]), try l.sm.make_string(l.input[position..l.position]), loc);
     }
 
     fn skipWhiteSpace(l: *Lexer) void {
@@ -76,7 +119,7 @@ pub const Lexer = struct {
         }
     }
 
-    fn readNumber(l: *Lexer) Token {
+    fn readNumber(l: *Lexer) !Token {
         const position = l.position;
 
         while (std.ascii.isDigit(l.ch)) {
@@ -85,10 +128,10 @@ pub const Lexer = struct {
 
         const loc = if (l.repl) null else token.Location.init(l.curr_line, l.curr_col, l.path.?);
 
-        return Token.initWithStringAndLocation(TokenKind.INT, l.input[position..l.position], loc);
+        return Token.init(TokenKind.INT, try l.sm.make_string(l.input[position..l.position]), loc);
     }
 
-    pub fn nextToken(l: *Lexer) token.Token {
+    pub fn nextToken(l: *Lexer) !token.Token {
         var tok: token.Token = undefined;
 
         l.skipWhiteSpace();
@@ -99,40 +142,40 @@ pub const Lexer = struct {
             '=' => {
                 if (l.peekChar() == '=') {
                     l.readChar();
-                    tok = Token.initWithStringAndLocation(TokenKind.EQ, "==", loc);
+                    tok = Token.init(TokenKind.EQ, try l.sm.make_string("=="), loc);
                 } else {
-                    tok = Token.initWithLocation(TokenKind.ASSIGN, l.ch, loc);
+                    tok = Token.init(TokenKind.ASSIGN, try l.sm.make_string("="), loc);
                 }
             },
-            ';' => tok = Token.initWithLocation(TokenKind.SEMICOLON, l.ch, loc),
-            '(' => tok = Token.initWithLocation(TokenKind.LPAREN, l.ch, loc),
-            ')' => tok = Token.initWithLocation(TokenKind.RPAREN, l.ch, loc),
-            ',' => tok = Token.initWithLocation(TokenKind.COMMA, l.ch, loc),
-            '+' => tok = Token.initWithLocation(TokenKind.PLUS, l.ch, loc),
-            '{' => tok = Token.initWithLocation(TokenKind.LBRACE, l.ch, loc),
-            '}' => tok = Token.initWithLocation(TokenKind.RBRACE, l.ch, loc),
+            ';' => tok = Token.init(TokenKind.SEMICOLON, try l.sm.make_string(";"), loc),
+            '(' => tok = Token.init(TokenKind.LPAREN, try l.sm.make_string("("), loc),
+            ')' => tok = Token.init(TokenKind.RPAREN, try l.sm.make_string(")"), loc),
+            ',' => tok = Token.init(TokenKind.COMMA, try l.sm.make_string(","), loc),
+            '+' => tok = Token.init(TokenKind.PLUS, try l.sm.make_string("+"), loc),
+            '{' => tok = Token.init(TokenKind.LBRACE, try l.sm.make_string("{"), loc),
+            '}' => tok = Token.init(TokenKind.RBRACE, try l.sm.make_string("}"), loc),
             '!' => {
                 if (l.peekChar() == '=') {
                     l.readChar();
-                    tok = Token.initWithStringAndLocation(TokenKind.NEQ, "!=", loc);
+                    tok = Token.init(TokenKind.NEQ, try l.sm.make_string("!="), loc);
                 } else {
-                    tok = Token.initWithStringAndLocation(TokenKind.BANG, "!", loc);
+                    tok = Token.init(TokenKind.BANG, try l.sm.make_string("!"), loc);
                 }
             },
-            '-' => tok = Token.initWithLocation(TokenKind.MINUS, l.ch, loc),
-            '*' => tok = Token.initWithLocation(TokenKind.ASTERISK, l.ch, loc),
-            '/' => tok = Token.initWithLocation(TokenKind.SLASH, l.ch, loc),
-            '<' => tok = Token.initWithLocation(TokenKind.LT, l.ch, loc),
-            '>' => tok = Token.initWithLocation(TokenKind.GT, l.ch, loc),
-            0x00 => tok = Token.initWithLocation(TokenKind.EOF, l.ch, loc),
+            '-' => tok = Token.init(TokenKind.MINUS, try l.sm.make_string("-"), loc),
+            '*' => tok = Token.init(TokenKind.ASTERISK, try l.sm.make_string("*"), loc),
+            '/' => tok = Token.init(TokenKind.SLASH, try l.sm.make_string("/"), loc),
+            '<' => tok = Token.init(TokenKind.LT, try l.sm.make_string("<"), loc),
+            '>' => tok = Token.init(TokenKind.GT, try l.sm.make_string(">"), loc),
+            0x00 => tok = Token.init(TokenKind.EOF, try l.sm.make_string(""), loc),
             else => {
                 if ((std.ascii.isAlphabetic(l.ch)) or (l.ch == '_')) {
-                    return l.readIdentifier();
+                    return try l.readIdentifier();
                 } else if (std.ascii.isDigit(l.ch)) {
-                    return l.readNumber();
+                    return try l.readNumber();
                 } else {
                     std.debug.print("Illegal character: {X}\n", .{l.ch});
-                    tok = Token.initWithLocation(TokenKind.ILLEGAL, l.ch, loc);
+                    tok = Token.init(TokenKind.ILLEGAL, try l.sm.make_string(""), loc);
                 }
             },
         }
@@ -157,17 +200,20 @@ test "text next token" {
     };
 
     var KW = try KeyWords.tryInit(testing.allocator);
-    defer KW.deinit();
+    var SM = try StringManager.init(testing.allocator);
+    defer {
+        KW.deinit();
+        SM.deinit();
+    }
 
-    var l = Lexer.init(input, true, null, &KW);
+    var l = Lexer.init(input, true, null, &KW, &SM);
 
     for (expected) |tt| {
-        const tok = l.nextToken();
+        const tok = try l.nextToken();
         try testing.expectEqual(tt.expected_type, tok.ttype);
 
         const result = std.mem.eql(u8, tt.expected_literal, tok.literal);
 
-        std.debug.print("\nthe result was {}\nexpected {any}, actual {any}\n", .{ result, tt.expected_literal, tok.literal });
         try testing.expect(result);
     }
 }
@@ -225,14 +271,19 @@ test "text next token long form" {
     };
 
     var KW = try KeyWords.tryInit(testing.allocator);
-    defer KW.deinit();
+    var SM = try StringManager.init(testing.allocator);
 
-    var l = Lexer.init(input, true, null, &KW);
+    defer {
+        KW.deinit();
+        SM.deinit();
+    }
+
+    var l = Lexer.init(input, true, null, &KW, &SM);
 
     for (expected) |tt| {
-        const tok = l.nextToken();
+        const tok = try l.nextToken();
         try testing.expectEqual(tt.expected_type, tok.ttype);
-        // const result = std.mem.eql(u8, tt.expected_literal, tok.literal);
-        // try testing.expect(result);
+        const result = std.mem.eql(u8, tt.expected_literal, tok.literal);
+        try testing.expect(result);
     }
 }

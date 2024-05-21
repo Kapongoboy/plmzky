@@ -60,22 +60,8 @@ pub const Token = struct {
     literal: Literal,
     _local: ?Location = null,
 
-    pub fn init(token_type: TokenKind, ch: u8) Token {
-        return Token{ .ttype = token_type, .literal = &[_]u8{ch} };
-    }
-
-    /// The caller owns the argument string
-    pub fn initWithString(token_type: TokenKind, ch: []const u8) Token {
-        return Token{ .ttype = token_type, .literal = ch };
-    }
-
-    /// The caller owns the argument string here as well
-    pub fn initWithLocation(token_type: TokenKind, ch: u8, loc: ?Location) Token {
-        return Token{ .ttype = token_type, .literal = &[_]u8{ch}, ._local = loc };
-    }
-
-    pub fn initWithStringAndLocation(token_type: TokenKind, ch: []const u8, loc: ?Location) Token {
-        return Token{ .ttype = token_type, .literal = ch, ._local = loc };
+    pub fn init(token_type: TokenKind, ch: *const []u8, loc: ?Location) Token {
+        return Token{ .ttype = token_type, .literal = ch.*, ._local = loc };
     }
 
     pub fn local(self: *Token) ?Location {
