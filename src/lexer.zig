@@ -218,19 +218,29 @@ test "text next token" {
     }
 }
 
-test "text next token long form" {
+test "test next token complete" {
     const input =
-        \\let five = 5;
+        \\let five = 5; 
         \\let ten = 10;
-        \\
         \\let add = fn(x, y) {
-        \\    x + y;
+        \\x + y;
         \\};
-        \\
         \\let result = add(five, ten);
+        \\!-/*5;
+        \\5 < 10 > 5;
+        \\if (5 < 10) {
+        \\return true;
+        \\} else {
+        \\return false;
+        \\}
+        \\10 == 10;
+        \\10 != 9;
     ;
 
-    const expected = [_]struct { expected_type: TokenKind, expected_literal: []const u8 }{
+    const expected = [_]struct {
+        expected_type: TokenKind,
+        expected_literal: []const u8,
+    }{
         .{ .expected_type = TokenKind.LET, .expected_literal = "let" },
         .{ .expected_type = TokenKind.IDENT, .expected_literal = "five" },
         .{ .expected_type = TokenKind.ASSIGN, .expected_literal = "=" },
@@ -266,6 +276,43 @@ test "text next token long form" {
         .{ .expected_type = TokenKind.COMMA, .expected_literal = "," },
         .{ .expected_type = TokenKind.IDENT, .expected_literal = "ten" },
         .{ .expected_type = TokenKind.RPAREN, .expected_literal = ")" },
+        .{ .expected_type = TokenKind.SEMICOLON, .expected_literal = ";" },
+        .{ .expected_type = TokenKind.BANG, .expected_literal = "!" },
+        .{ .expected_type = TokenKind.MINUS, .expected_literal = "-" },
+        .{ .expected_type = TokenKind.SLASH, .expected_literal = "/" },
+        .{ .expected_type = TokenKind.ASTERISK, .expected_literal = "*" },
+        .{ .expected_type = TokenKind.INT, .expected_literal = "5" },
+        .{ .expected_type = TokenKind.SEMICOLON, .expected_literal = ";" },
+        .{ .expected_type = TokenKind.INT, .expected_literal = "5" },
+        .{ .expected_type = TokenKind.LT, .expected_literal = "<" },
+        .{ .expected_type = TokenKind.INT, .expected_literal = "10" },
+        .{ .expected_type = TokenKind.GT, .expected_literal = ">" },
+        .{ .expected_type = TokenKind.INT, .expected_literal = "5" },
+        .{ .expected_type = TokenKind.SEMICOLON, .expected_literal = ";" },
+        .{ .expected_type = TokenKind.IF, .expected_literal = "if" },
+        .{ .expected_type = TokenKind.LPAREN, .expected_literal = "(" },
+        .{ .expected_type = TokenKind.INT, .expected_literal = "5" },
+        .{ .expected_type = TokenKind.LT, .expected_literal = "<" },
+        .{ .expected_type = TokenKind.INT, .expected_literal = "10" },
+        .{ .expected_type = TokenKind.RPAREN, .expected_literal = ")" },
+        .{ .expected_type = TokenKind.LBRACE, .expected_literal = "{" },
+        .{ .expected_type = TokenKind.RETURN, .expected_literal = "return" },
+        .{ .expected_type = TokenKind.TRUE, .expected_literal = "true" },
+        .{ .expected_type = TokenKind.SEMICOLON, .expected_literal = ";" },
+        .{ .expected_type = TokenKind.RBRACE, .expected_literal = "}" },
+        .{ .expected_type = TokenKind.ELSE, .expected_literal = "else" },
+        .{ .expected_type = TokenKind.LBRACE, .expected_literal = "{" },
+        .{ .expected_type = TokenKind.RETURN, .expected_literal = "return" },
+        .{ .expected_type = TokenKind.FALSE, .expected_literal = "false" },
+        .{ .expected_type = TokenKind.SEMICOLON, .expected_literal = ";" },
+        .{ .expected_type = TokenKind.RBRACE, .expected_literal = "}" },
+        .{ .expected_type = TokenKind.INT, .expected_literal = "10" },
+        .{ .expected_type = TokenKind.EQ, .expected_literal = "==" },
+        .{ .expected_type = TokenKind.INT, .expected_literal = "10" },
+        .{ .expected_type = TokenKind.SEMICOLON, .expected_literal = ";" },
+        .{ .expected_type = TokenKind.INT, .expected_literal = "10" },
+        .{ .expected_type = TokenKind.NEQ, .expected_literal = "!=" },
+        .{ .expected_type = TokenKind.INT, .expected_literal = "9" },
         .{ .expected_type = TokenKind.SEMICOLON, .expected_literal = ";" },
         .{ .expected_type = TokenKind.EOF, .expected_literal = "" },
     };
