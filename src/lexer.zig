@@ -6,7 +6,7 @@ const TokenKind = token.TokenKind;
 const Token = token.Token;
 const Allocator = std.mem.Allocator;
 
-const StringManager = struct {
+pub const StringManager = struct {
     const Self = @This();
 
     allocator: Allocator,
