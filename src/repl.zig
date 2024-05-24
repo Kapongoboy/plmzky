@@ -1,13 +1,24 @@
 const std = @import("std");
-const Lexer = @import("lexer.zig").Lexer;
+const lexer = @import("lexer.zig");
+const Lexer = lexer.Lexer;
+const SM = lexer.StringManager;
 const stdout = std.io.getStdOut();
 const stdin = std.io.getStdIn();
 const KW = @import("token.zig").KeyWords;
 const TokenKind = @import("token.zig").TokenKind;
+const Allocator = std.mem.Allocator;
 
-const PROMPT = ">>";
+const PROMPT = ">> ";
 
-pub fn start(kw: *KW) !void {
+pub fn start(a: Allocator) !void {
+    var kw = try KW.tryInit(a);
+    var sm = try SM.init(a);
+
+    defer {
+        kw.deinit();
+        sm.deinit();
+    }
+
     while (true) {
         try stdout.writer().print("{s}", .{PROMPT});
 
@@ -19,13 +30,13 @@ pub fn start(kw: *KW) !void {
             break;
         }
 
-        var l = Lexer.init(input, true, null, kw);
+        var l = Lexer.init(input, true, null, &kw, &sm);
 
-        var tok = l.nextToken();
+        var tok = try l.nextToken();
 
         while (tok.ttype != TokenKind.EOF) {
             try stdout.writer().print("{any}\n", .{tok});
-            tok = l.nextToken();
+            tok = try l.nextToken();
         }
     }
 }
