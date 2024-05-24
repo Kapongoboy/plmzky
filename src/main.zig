@@ -6,12 +6,10 @@ const plmzky = @import("plmzky");
 
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
 
     const ally = arena.allocator();
 
-    var kw = try plmzky.token.KeyWords.tryInit(ally);
-    defer kw.deinit();
+    defer arena.deinit();
 
     const user = std.process.getEnvVarOwned(ally, "USER") catch |e| {
         try stderr.print("Error getting user name: err = {}\n", .{e});
@@ -20,7 +18,7 @@ pub fn main() !void {
 
     if (!try givenFileArg(ally)) {
         try stdout.print("Hello {s}! This is the Monkey programming language\n", .{user});
-        try plmzky.repl.start(&kw);
+        try plmzky.repl.start(ally);
     } else {
         try stderr.print("File argument not yet supported, functionality coming soon\n", .{});
     }
