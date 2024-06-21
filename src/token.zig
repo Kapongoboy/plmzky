@@ -69,31 +69,20 @@ pub const Token = struct {
     }
 };
 
-pub const KeyWords = struct {
-    map: Map(TokenKind),
-    pub fn tryInit(a: Allocator) !KeyWords {
-        var map = Map(TokenKind).init(a);
+pub const KeyWordsStatic = std.static_string_map.StaticStringMap(TokenKind).initComptime(.{
+    .{ "fn", TokenKind.FUNCTION },
+    .{ "let", TokenKind.LET },
+    .{ "true", TokenKind.TRUE },
+    .{ "false", TokenKind.FALSE },
+    .{ "if", TokenKind.IF },
+    .{ "else", TokenKind.ELSE },
+    .{ "return", TokenKind.RETURN },
+});
 
-        try map.put("fn", TokenKind.FUNCTION);
-        try map.put("let", TokenKind.LET);
-        try map.put("true", TokenKind.TRUE);
-        try map.put("false", TokenKind.FALSE);
-        try map.put("if", TokenKind.IF);
-        try map.put("else", TokenKind.ELSE);
-        try map.put("return", TokenKind.RETURN);
-
-        return KeyWords{ .map = map };
+pub fn lookUpIdent(ident: []const u8) TokenKind {
+    if (KeyWordsStatic.get(ident)) |tok| {
+        return tok;
+    } else {
+        return TokenKind.IDENT;
     }
-
-    pub fn lookUpIdent(self: *KeyWords, ident: []const u8) TokenKind {
-        if (self.map.get(ident)) |tok| {
-            return tok;
-        } else {
-            return TokenKind.IDENT;
-        }
-    }
-
-    pub fn deinit(self: *KeyWords) void {
-        self.map.deinit();
-    }
-};
+}
