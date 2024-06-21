@@ -69,7 +69,7 @@ pub const Token = struct {
     }
 };
 
-pub const KeyWordsStatic = std.static_string_map.StaticStringMap(TokenKind).initComptime(.{
+pub const KeyWordsStatic = std.StaticStringMap(TokenKind).initComptime(.{
     .{ "fn", TokenKind.FUNCTION },
     .{ "let", TokenKind.LET },
     .{ "true", TokenKind.TRUE },
